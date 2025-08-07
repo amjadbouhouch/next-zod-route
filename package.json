@@ -39,7 +39,6 @@
     "build": "tsup",
     "dev": "yarn build --watch",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "postinstall": "yarn build",
     "lint": "tsc --noEmit && eslint .",
     "lint-staged": "lint-staged",
     "prepare": "husky",
