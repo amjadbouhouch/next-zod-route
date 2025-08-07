@@ -7,13 +7,13 @@ import z__default, { Schema } from 'zod';
  * @param context - The context object
  * @returns The response from the route handler
  */
-type HandlerFunction<TParams, TQuery, TBody, TContext, TMetadata = unknown> = (request: Request, context: {
+type HandlerFunction<TParams, TQuery, TBody, TContext, TMetadata = unknown, TReturn = any> = (request: Request, context: {
     params: TParams;
     query: TQuery;
     body: TBody;
     ctx: TContext;
     metadata?: TMetadata;
-}) => any;
+}) => TReturn;
 /**
  * Function signature for the next() function in middleware
  * @param options - Optional configuration object
@@ -64,15 +64,19 @@ interface RouteHandlerBuilderConfig {
  * Original Next.js route handler type for reference
  * This is the type that Next.js uses internally before our library wraps it
  */
-type OriginalRouteHandler = (request: Request, context: {
+type OriginalRouteHandler<TReturn = any> = (request: Request, context: {
     params: Promise<Record<string, unknown>>;
-}) => any;
+}) => TReturn;
 /**
  * Function that handles server errors in route handlers
  * @param error - The error that was thrown
  * @returns Response object with appropriate error details and status code
  */
 type HandlerServerErrorFn = (error: Error) => Response;
+/**
+ * Utility type to extract the return type of a route handler
+ */
+type RouteResponse<T> = T extends OriginalRouteHandler<infer R> ? Awaited<R> : never;
 
 /**
  * Type of the middleware function passed to a safe action client.
@@ -84,7 +88,7 @@ type MiddlewareFn<TContext, TReturnType, TMetadata = unknown> = {
         metadata?: TMetadata;
     }): Promise<TReturnType>;
 };
-declare class RouteHandlerBuilder<TParams extends z__default.Schema = z__default.Schema, TQuery extends z__default.Schema = z__default.Schema, TBody extends z__default.Schema = z__default.Schema, TContext = {}, TMetadata extends z__default.Schema = z__default.Schema> {
+declare class RouteHandlerBuilder<TParams extends z__default.Schema = z__default.Schema, TQuery extends z__default.Schema = z__default.Schema, TBody extends z__default.Schema = z__default.Schema, TContext = {}, TMetadata extends z__default.Schema = z__default.Schema, TResponse extends z__default.Schema = z__default.Schema> {
     readonly config: {
         paramsSchema: TParams;
         querySchema: TQuery;
@@ -101,42 +105,50 @@ declare class RouteHandlerBuilder<TParams extends z__default.Schema = z__default
             querySchema: TQuery;
             bodySchema: TBody;
             metadataSchema?: TMetadata;
+            responseSchema?: TResponse;
         };
         middlewares?: Array<MiddlewareFunction<TContext, Record<string, unknown>, z__default.infer<TMetadata>>>;
         handleServerError?: HandlerServerErrorFn;
         contextType: TContext;
         metadataValue?: z__default.infer<TMetadata>;
+        responseSchema?: TResponse;
     });
     /**
      * Define the schema for the params
      * @param schema - The schema for the params
      * @returns A new instance of the RouteHandlerBuilder
      */
-    params<T extends z__default.Schema>(schema: T): RouteHandlerBuilder<T, TQuery, TBody, TContext, TMetadata>;
+    params<T extends z__default.Schema>(schema: T): RouteHandlerBuilder<T, TQuery, TBody, TContext, TMetadata, z__default.ZodType<any, z__default.ZodTypeDef, any>>;
     /**
      * Define the schema for the query
      * @param schema - The schema for the query
      * @returns A new instance of the RouteHandlerBuilder
      */
-    query<T extends z__default.Schema>(schema: T): RouteHandlerBuilder<TParams, T, TBody, TContext, TMetadata>;
+    query<T extends z__default.Schema>(schema: T): RouteHandlerBuilder<TParams, T, TBody, TContext, TMetadata, z__default.ZodType<any, z__default.ZodTypeDef, any>>;
     /**
      * Define the schema for the body
      * @param schema - The schema for the body
      * @returns A new instance of the RouteHandlerBuilder
      */
-    body<T extends z__default.Schema>(schema: T): RouteHandlerBuilder<TParams, TQuery, T, TContext, TMetadata>;
+    body<T extends z__default.Schema>(schema: T): RouteHandlerBuilder<TParams, TQuery, T, TContext, TMetadata, z__default.ZodType<any, z__default.ZodTypeDef, any>>;
+    /**
+     * Define the schema for the response
+     * @param schema - The schema for the response
+     * @returns A new instance of the RouteHandlerBuilder
+     */
+    response<T extends z__default.Schema>(schema: T): RouteHandlerBuilder<TParams, TQuery, TBody, TContext, TMetadata, T>;
     /**
      * Define the schema for the metadata
      * @param schema - The schema for the metadata
      * @returns A new instance of the RouteHandlerBuilder
      */
-    defineMetadata<T extends z__default.Schema>(schema: T): RouteHandlerBuilder<TParams, TQuery, TBody, TContext, T>;
+    defineMetadata<T extends z__default.Schema>(schema: T): RouteHandlerBuilder<TParams, TQuery, TBody, TContext, T, z__default.ZodType<any, z__default.ZodTypeDef, any>>;
     /**
      * Set the metadata value for the route handler
      * @param value - The metadata value that will be passed to middlewares
      * @returns A new instance of the RouteHandlerBuilder
      */
-    metadata(value: z__default.infer<TMetadata>): RouteHandlerBuilder<TParams, TQuery, TBody, TContext, TMetadata>;
+    metadata(value: z__default.infer<TMetadata>): RouteHandlerBuilder<TParams, TQuery, TBody, TContext, TMetadata, z__default.ZodType<any, z__default.ZodTypeDef, any>>;
     /**
      * Add a middleware to the route handler
      * @param middleware - The middleware function to be executed
@@ -148,11 +160,11 @@ declare class RouteHandlerBuilder<TParams extends z__default.Schema = z__default
      * @param handler - The handler function that will be called when the route is hit
      * @returns The original route handler that Next.js expects with the validation logic
      */
-    handler(handler: HandlerFunction<z__default.infer<TParams>, z__default.infer<TQuery>, z__default.infer<TBody>, TContext, z__default.infer<TMetadata>>): OriginalRouteHandler;
+    handler<TReturn = Response>(handler: HandlerFunction<z__default.infer<TParams>, z__default.infer<TQuery>, z__default.infer<TBody>, TContext, z__default.infer<TMetadata>, TReturn>): OriginalRouteHandler<Promise<TReturn | Response>>;
 }
 
 declare function createZodRoute(params?: {
     handleServerError?: HandlerServerErrorFn;
-}): RouteHandlerBuilder<z.ZodType<any, z.ZodTypeDef, any>, z.ZodType<any, z.ZodTypeDef, any>, z.ZodType<any, z.ZodTypeDef, any>, {}, z.ZodType<any, z.ZodTypeDef, any>>;
+}): RouteHandlerBuilder<z.ZodType<any, z.ZodTypeDef, any>, z.ZodType<any, z.ZodTypeDef, any>, z.ZodType<any, z.ZodTypeDef, any>, {}, z.ZodType<any, z.ZodTypeDef, any>, z.ZodType<any, z.ZodTypeDef, any>>;
 
-export { type HandlerFunction, type MiddlewareFn, type MiddlewareFunction, RouteHandlerBuilder, type RouteHandlerBuilderConfig, createZodRoute };
+export { type HandlerFunction, type MiddlewareFn, type MiddlewareFunction, RouteHandlerBuilder, type RouteHandlerBuilderConfig, type RouteResponse, createZodRoute };
