@@ -37,8 +37,9 @@
   ],
   "scripts": {
     "build": "tsup",
-    "dev": "pnpm build --watch",
+    "dev": "yarn build --watch",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "postinstall": "yarn build",
     "lint": "tsc --noEmit && eslint .",
     "lint-staged": "lint-staged",
     "prepare": "husky",
@@ -70,7 +71,7 @@
     "typescript": "^5.5.4",
     "vitest": "^1.6.0"
   },
-  "packageManager": "pnpm@9.1.2",
+  "packageManager": "yarn@1.22.22",
   "engines": {
     "node": ">=18"
   },
@@ -89,8 +90,8 @@
     "hooks": {
       "before:init": [
         "git pull",
-        "pnpm lint",
-        "pnpm build"
+        "yarn lint",
+        "yarn build"
       ]
     }
   }
